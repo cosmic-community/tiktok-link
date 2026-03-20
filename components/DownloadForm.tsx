@@ -6,6 +6,7 @@ import type { DownloadResponse } from '@/types';
 export default function DownloadForm() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [result, setResult] = useState<DownloadResponse | null>(null);
   const [error, setError] = useState('');
 
@@ -41,6 +42,51 @@ export default function DownloadForm() {
       setError('Network error. Please check your connection and try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Changed: Download video through our proxy API so the browser saves the file
+  const handleDownload = async () => {
+    if (!result?.downloadUrl) return;
+
+    setDownloading(true);
+
+    try {
+      const proxyUrl = `/api/proxy-download?url=${encodeURIComponent(
+        result.downloadUrl
+      )}&title=${encodeURIComponent(result.title || 'tiktok-video')}`;
+
+      const response = await fetch(proxyUrl);
+
+      if (!response.ok) {
+        setError('Failed to download video. Please try again.');
+        setDownloading(false);
+        return;
+      }
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      // Sanitize filename
+      const safeTitle =
+        (result.title || 'tiktok-video')
+          .replace(/[^a-zA-Z0-9_\-\s]/g, '')
+          .replace(/\s+/g, '_')
+          .substring(0, 100) || 'tiktok-video';
+
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `${safeTitle}.mp4`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clean up the blob URL after a short delay
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+    } catch {
+      setError('Download failed. Please try again.');
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -141,20 +187,34 @@ export default function DownloadForm() {
               </div>
 
               <div className="flex flex-wrap gap-3">
-                <a
-                  href={result.downloadUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-white transition-all hover:opacity-90 glow-cyan"
+                {/* Changed: Use button + fetch/blob to force download instead of <a> navigation */}
+                <button
+                  onClick={handleDownload}
+                  disabled={downloading}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-white transition-all hover:opacity-90 glow-cyan disabled:opacity-60 disabled:cursor-not-allowed"
                   style={{
-                    background: 'linear-gradient(135deg, #25F4EE, #00b8d4)',
+                    background: downloading
+                      ? 'linear-gradient(135deg, #555, #333)'
+                      : 'linear-gradient(135deg, #25F4EE, #00b8d4)',
                   }}
                 >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                  </svg>
-                  Download Video
-                </a>
+                  {downloading ? (
+                    <>
+                      <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Downloading...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                      </svg>
+                      Download Video
+                    </>
+                  )}
+                </button>
 
                 <button
                   onClick={handleReset}
