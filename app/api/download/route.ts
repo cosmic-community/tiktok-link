@@ -38,8 +38,14 @@ async function extractTikTokVideo(url: string): Promise<TikTokVideoData> {
 
   const videoData = data.data;
 
+  // Changed: Check if the play URL is already a full URL before prepending the tikwm base
+  const playUrl: string = videoData.play || '';
+  const downloadUrl = playUrl.startsWith('http')
+    ? playUrl
+    : `https://www.tikwm.com${playUrl}`;
+
   return {
-    downloadUrl: `https://www.tikwm.com${videoData.play}`,
+    downloadUrl,
     title: videoData.title || 'TikTok Video',
     thumbnail: videoData.cover || videoData.origin_cover || '',
   };

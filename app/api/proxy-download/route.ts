@@ -1,5 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Changed: Allow tikwm.com and all TikTok CDN domains that host actual video files
+const ALLOWED_HOSTNAME_PATTERNS = [
+  /\.tikwm\.com$/i,
+  /\.tiktokcdn\.com$/i,
+  /\.tiktokcdn-us\.com$/i,
+  /\.tiktokcdn-eu\.com$/i,
+  /\.tiktokv\.com$/i,
+  /\.tiktokv-us\.com$/i,
+  /\.musical\.ly$/i,
+  /\.muscdn\.com$/i,
+  /^tikwm\.com$/i,
+  /^tiktokcdn\.com$/i,
+  /^tiktokcdn-us\.com$/i,
+];
+
+function isAllowedHost(hostname: string): boolean {
+  return ALLOWED_HOSTNAME_PATTERNS.some((pattern) => pattern.test(hostname));
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -13,16 +32,26 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Validate the URL points to tikwm.com to prevent open redirect / SSRF
-    const parsedUrl = new URL(videoUrl);
-    if (!parsedUrl.hostname.endsWith('tikwm.com')) {
+    // Validate the URL points to an allowed video source to prevent SSRF
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(videoUrl);
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Invalid video URL format' },
+        { status: 400 }
+      );
+    }
+
+    if (!isAllowedHost(parsedUrl.hostname)) {
+      console.error('Blocked proxy request to disallowed host:', parsedUrl.hostname);
       return NextResponse.json(
         { success: false, error: 'Invalid video source' },
         { status: 400 }
       );
     }
 
-    // Fetch the actual video binary from tikwm
+    // Fetch the actual video binary from the source
     const videoResponse = await fetch(videoUrl, {
       headers: {
         'User-Agent':
@@ -44,11 +73,11 @@ export async function GET(request: NextRequest) {
     const contentLength = videoResponse.headers.get('content-length');
 
     // Sanitize the title for use as a filename
-    const safeTitle = title
-      .replace(/[^a-zA-Z0-9_\-\s]/g, '')
-      .replace(/\s+/g, '_')
-      .substring(0, 100)
-      || 'tiktok-video';
+    const safeTitle =
+      title
+        .replace(/[^a-zA-Z0-9_\-\s]/g, '')
+        .replace(/\s+/g, '_')
+        .substring(0, 100) || 'tiktok-video';
 
     const headers = new Headers({
       'Content-Type': contentType,
