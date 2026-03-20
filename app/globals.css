@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --tiktok-cyan: #25F4EE;
+    --tiktok-magenta: #FE2C55;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #010101;
+    color: #ffffff;
+  }
+
+  ::selection {
+    background-color: rgba(37, 244, 238, 0.3);
+    color: #ffffff;
+  }
+}
+
+@layer components {
+  .glass-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .glow-cyan {
+    box-shadow: 0 0 20px rgba(37, 244, 238, 0.3), 0 0 40px rgba(37, 244, 238, 0.1);
+  }
+
+  .glow-magenta {
+    box-shadow: 0 0 20px rgba(254, 44, 85, 0.3), 0 0 40px rgba(254, 44, 85, 0.1);
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, #25F4EE, #FE2C55);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .gradient-border {
+    position: relative;
+    border-radius: 12px;
+  }
+
+  .gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 13px;
+    padding: 1px;
+    background: linear-gradient(135deg, #25F4EE, #FE2C55);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .tiktok-gradient-bg {
+    background: linear-gradient(135deg, rgba(37, 244, 238, 0.08) 0%, rgba(254, 44, 85, 0.08) 50%, rgba(37, 244, 238, 0.04) 100%);
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
